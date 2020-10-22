@@ -1,0 +1,31 @@
+﻿name: OSX-Release
+on:
+  release:
+    types: [created]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: gableroux/unity3d:2019.3.0f6-mac
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v1
+        with:
+          ref: ${{ env.GITHUB_REF }}
+
+      - name: Decrypt the license file
+        run: openssl aes-256-cbc -d -in .github/Unity_v2019.x.ulf.enc -k ${{ secrets.UNITY_LICENSE_DECRYPT_KEY }} >> .github/Unity_v2019.x.ulf
+
+      # Activate unity
+      - name: Activate Unity
+        run: /opt/Unity/Editor/Unity -quit -batchmode -nographics -silent-crashes -logFile -manualLicenseFile .github/Unity_v2019.x.ulf || exit 0
+
+      # Build OSX
+      - name: Build OSX Player
+        run: /opt/Unity/Editor/Unity -quit -batchmode -nographics -silent-crashes -logFile -projectPath . -executeMethod Crowdoka.ProjectName.Build.Editor.Builder.PerformOSXBuild
+
+      - name: Upload to release
+        uses: JasonEtco/upload-to-release@v0.1.1
+        with:
+          args: ./builds/ProjectName-osx.zip application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
